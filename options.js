@@ -45,12 +45,14 @@ function render() {
 
       <label>Name<input data-field="name" value="${escapeAttr(site.name)}" placeholder="vip.lcodex"></label>
       <label>Login origin<input data-field="origin" value="${escapeAttr(site.origin)}" placeholder="https://vip.lcodex.cn"></label>
-      <label>Check URL<input data-field="checkUrl" value="${escapeAttr(site.checkUrl)}" placeholder="https://vip.lcodex.cn/api/user/self/groups"></label>
+      <label>Dashboard / key page URL<input data-field="scanUrl" value="${escapeAttr(site.scanUrl)}" placeholder="URL of the page that shows key groups/rates after login"></label>
+      <label>Check URL<input data-field="checkUrl" value="${escapeAttr(site.checkUrl)}" placeholder="Optional in keyword scan mode"></label>
 
       <div class="grid-3">
         <label>Request mode
           <select data-field="requestMode">
-            <option value="page" ${site.requestMode !== 'background' ? 'selected' : ''}>Logged-in tab</option>
+            <option value="scan" ${site.requestMode === 'scan' || !site.requestMode ? 'selected' : ''}>Page keyword scan</option>
+            <option value="page" ${site.requestMode === 'page' ? 'selected' : ''}>Logged-in tab API</option>
             <option value="background" ${site.requestMode === 'background' ? 'selected' : ''}>Extension background</option>
           </select>
         </label>
@@ -94,6 +96,7 @@ function render() {
       </div>
 
       <label>Text regex<input data-field="regex" value="${escapeAttr(site.regex)}" placeholder="([^\\n]+?)\\s*(?:rate|ratio|multiplier)\\s*[:=]\\s*([0-9.]+)"></label>
+      <label>Max scan results<input data-field="maxScanResults" value="${escapeAttr(site.maxScanResults)}" placeholder="50"></label>
     </article>
   `).join('');
 
@@ -125,7 +128,7 @@ async function saveSites() {
     ...site,
     id: site.id || crypto.randomUUID(),
     enabled: Boolean(site.enabled),
-    requestMode: site.requestMode || 'page',
+    requestMode: site.requestMode || 'scan',
     method: site.method || 'GET',
     parserType: site.parserType || 'json',
     tokenSource: site.tokenSource || 'none',
@@ -141,8 +144,9 @@ function createSite() {
     enabled: true,
     name: 'vip.lcodex',
     origin: 'https://vip.lcodex.cn',
-    checkUrl: 'https://vip.lcodex.cn/api/user/self/groups',
-    requestMode: 'page',
+    scanUrl: '',
+    checkUrl: '',
+    requestMode: 'scan',
     method: 'GET',
     body: '',
     parserType: 'json',
@@ -155,7 +159,8 @@ function createSite() {
     tokenKey: '',
     tokenJsonPath: '',
     authHeaderName: 'Authorization',
-    authHeaderTemplate: 'Bearer {{token}}'
+    authHeaderTemplate: 'Bearer {{token}}',
+    maxScanResults: '50'
   };
 }
 

@@ -27,14 +27,14 @@ async function render() {
     content.innerHTML = `
       <section class="empty">
         <strong>Add a relay site first</strong>
-        <span>Open settings, add the API URL, then choose a parser.</span>
+        <span>Open settings, choose Page keyword scan, then keep the dashboard tab open.</span>
       </section>
     `;
     return;
   }
 
   const okCount = sites.filter((site) => results[site.id]?.ok).length;
-  summary.textContent = `${okCount}/${sites.length} OK${lastRunAt ? ` · ${formatTime(lastRunAt)}` : ''}`;
+  summary.textContent = `${okCount}/${sites.length} OK${lastRunAt ? ` - ${formatTime(lastRunAt)}` : ''}`;
 
   content.innerHTML = sites.map((site) => {
     const result = results[site.id];
@@ -45,7 +45,7 @@ async function render() {
         <div class="site-head">
           <div>
             <h2>${escapeHtml(site.name || site.origin || 'Unnamed site')}</h2>
-            <span>${escapeHtml(result?.transport || site.requestMode || 'page')} · ${escapeHtml(site.origin || shortUrl(site.checkUrl))}</span>
+            <span>${escapeHtml(result?.transport || site.requestMode || 'scan')} - ${escapeHtml(site.origin || shortUrl(site.checkUrl))}</span>
           </div>
           <button class="small-button" data-site-id="${site.id}">Check</button>
         </div>
@@ -67,7 +67,7 @@ function renderResult(result, groups) {
   if (!result.ok) {
     return `
       <div class="error">${escapeHtml(result.error || 'Check failed')}</div>
-      <p class="muted">HTTP ${escapeHtml(result.status || '-')} · ${escapeHtml(result.latencyMs || 0)}ms</p>
+      <p class="muted">HTTP ${escapeHtml(result.status || '-')} - ${escapeHtml(result.latencyMs || 0)}ms</p>
       ${result.preview ? `<details><summary>Response preview</summary><pre>${escapeHtml(result.preview)}</pre></details>` : ''}
     `;
   }
@@ -81,7 +81,7 @@ function renderResult(result, groups) {
         </div>
       `).join('')}
     </div>
-    <p class="muted">HTTP ${escapeHtml(result.status)} · ${escapeHtml(result.latencyMs)}ms</p>
+    <p class="muted">HTTP ${escapeHtml(result.status)} - ${escapeHtml(result.latencyMs)}ms</p>
   `;
 }
 

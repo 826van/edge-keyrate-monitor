@@ -21,8 +21,9 @@
       <section class="help-panel">
         <h2>How to configure vip.lcodex.cn</h2>
         <p>Keep a normal logged-in tab open at <code>https://vip.lcodex.cn</code>.</p>
-        <p>Use check URL <code>https://vip.lcodex.cn/api/user/self/groups</code> and request mode <code>Logged-in tab</code>.</p>
-        <p>If it still fails, open DevTools Network, click the same API request, and copy its Authorization header source. Then set Token source/key below.</p>
+        <p>First try request mode <code>Page keyword scan</code>. Fill <code>Dashboard / key page URL</code> with the page that shows generated keys or key groups after login.</p>
+        <p>If that page is not open, the extension will open it. Log in or navigate to the right page, then click check again.</p>
+        <p>If scan cannot find enough data, switch to <code>Logged-in tab API</code>, use check URL <code>https://vip.lcodex.cn/api/user/self/groups</code>, and inspect DevTools Network for token headers if needed.</p>
       </section>
 
       <footer class="settings-actions">
