@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Key Rate Monitor",
+  "description": "Monitor relay account key group rates using the logged-in browser session.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Key Rate Monitor",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "permissions": [
+    "alarms",
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}
