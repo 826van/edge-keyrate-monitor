@@ -6,8 +6,9 @@ Edge/Chrome Manifest V3 extension for checking relay key group rates.
 
 - Checks multiple relay dashboards.
 - Reuses your existing browser login.
+- Can auto-discover likely key/token/group pages from any logged-in dashboard tab.
 - Supports three request modes:
-  - `Page keyword scan`: scans the already logged-in dashboard page for group/rate keywords. This is the easiest fallback when an API is hard to call.
+  - `Page keyword scan`: scans the already logged-in dashboard page for group/rate keywords. If enabled, it then opens likely same-origin key/token/group pages and scans them too.
   - `Logged-in tab API`: runs fetch inside an already logged-in site tab. This is best for dashboards that require page cookies, localStorage tokens, or same-origin requests.
   - `Extension background`: runs fetch from the extension service worker.
 - Keeps config and results in local browser storage.
@@ -25,20 +26,23 @@ After edits, click `Reload` on the extension card.
 ## Configure vip.lcodex.cn
 
 1. Open `https://vip.lcodex.cn` in Edge and log in.
-2. Open the dashboard/key page that visibly shows generated keys, key groups, or rates.
-3. Keep that tab open and copy its URL.
-4. Open the extension options.
-5. Add a site with the scan mode first:
+2. Keep any logged-in dashboard page open.
+3. Open the extension options.
+4. Add a site with the scan mode first:
    - Name: `vip.lcodex`
    - Login origin: `https://vip.lcodex.cn`
-   - Dashboard / key page URL: paste the page URL from step 2
+   - Dashboard / key page URL: optional. Fill it only when you already know the exact page that shows key groups/rates.
    - Check URL: leave blank
    - Request mode: `Page keyword scan`
-6. Save and check.
+   - Auto discover key page: enabled
+   - Max discover pages: `5`
+5. Save and check.
 
 The scan mode reads visible dashboard text, tables, and cards. It looks for terms such as `rate`, `ratio`, `multiplier`, and common Chinese group/rate labels.
 
-If the dashboard/key page is not open, the extension opens it automatically. Log in or navigate to the page, then click check again.
+With auto-discovery enabled, the extension scans the current logged-in page first. If it cannot find rates there, it opens likely same-origin pages from menus/links such as key, token, API key, group, rate, and common hash routes like `#/tokens`. It only reads pages; it does not click create, delete, revoke, or reset buttons.
+
+If no logged-in tab is open for the site, the extension opens the login origin. Log in, keep that dashboard tab open, then click check again.
 
 ## API fallback
 

@@ -21,8 +21,9 @@
       <section class="help-panel">
         <h2>How to configure vip.lcodex.cn</h2>
         <p>Keep a normal logged-in tab open at <code>https://vip.lcodex.cn</code>.</p>
-        <p>First try request mode <code>Page keyword scan</code>. Fill <code>Dashboard / key page URL</code> with the page that shows generated keys or key groups after login.</p>
-        <p>If that page is not open, the extension will open it. Log in or navigate to the right page, then click check again.</p>
+        <p>First try request mode <code>Page keyword scan</code>. With <code>Auto discover key page</code> enabled, <code>Dashboard / key page URL</code> can stay blank.</p>
+        <p>Keep any logged-in dashboard tab open. The extension scans that page first, then opens likely same-origin key/token/group pages and scans them.</p>
+        <p>Discovery only reads pages. It does not click create, delete, revoke, or reset buttons.</p>
         <p>If scan cannot find enough data, switch to <code>Logged-in tab API</code>, use check URL <code>https://vip.lcodex.cn/api/user/self/groups</code>, and inspect DevTools Network for token headers if needed.</p>
       </section>
 

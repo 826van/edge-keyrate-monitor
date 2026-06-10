@@ -103,8 +103,11 @@ async function checkSite(site) {
       checkedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       groups,
-      error: responseData.ok ? null : `HTTP ${responseData.status} ${responseData.statusText}`,
-      preview: makePreview(responseData.text || responseData.preview || '')
+      error: responseData.ok ? null : (responseData.error || `HTTP ${responseData.status} ${responseData.statusText}`),
+      preview: makePreview(responseData.text || responseData.preview || ''),
+      discoveredUrl: responseData.discoveredUrl || '',
+      triedUrls: Array.isArray(responseData.triedUrls) ? responseData.triedUrls : [],
+      discoverErrors: Array.isArray(responseData.discoverErrors) ? responseData.discoverErrors : []
     };
   } catch (error) {
     return {
@@ -159,8 +162,96 @@ async function fetchFromLoggedInTab(site) {
 
 async function scanFromLoggedInTab(site) {
   const tab = await findLoggedInTab(site);
+  const first = await runPageScan(tab.id, site);
+  if (first.ok || site.autoDiscoverKeyPage === false) {
+    return first;
+  }
+
+  const links = mergeScanCandidates(site, tab.url, await discoverCandidateLinks(tab.id, site));
+  const tried = [];
+  const discoverErrors = [];
+  for (const link of links.slice(0, Number(site.maxDiscoverPages) || 5)) {
+    tried.push(link.url);
+    let probeTab = null;
+    try {
+      probeTab = await chrome.tabs.create({ url: link.url, active: false });
+      await waitForTabComplete(probeTab.id, 12000);
+      await delay(800);
+      const result = await runPageScan(probeTab.id, site);
+      result.discoveredUrl = link.url;
+      result.triedUrls = tried;
+      result.discoverErrors = discoverErrors;
+      if (result.ok) {
+        return result;
+      }
+      if (result.error) {
+        discoverErrors.push(`${link.url}: ${result.error}`);
+      }
+    } catch (error) {
+      discoverErrors.push(`${link.url}: ${String(error.message || error)}`);
+    } finally {
+      if (probeTab && probeTab.id) {
+        chrome.tabs.remove(probeTab.id).catch(() => {});
+      }
+    }
+  }
+
+  return {
+    ...first,
+    triedUrls: tried,
+    discoverErrors,
+    error: tried.length
+      ? `No rate groups found. Tried ${tried.length} discovered page(s).`
+      : 'No rate groups found. Auto-discovery found no likely key pages.'
+  };
+}
+
+function mergeScanCandidates(site, currentUrl, discoveredLinks) {
+  const items = [];
+  const seen = new Set();
+  let currentKey = '';
+
+  try {
+    currentKey = new URL(currentUrl).toString();
+  } catch {
+    currentKey = '';
+  }
+
+  function add(url, text, score, source) {
+    if (!url) {
+      return;
+    }
+    let key;
+    try {
+      key = new URL(url).toString();
+    } catch {
+      return;
+    }
+    if (key === currentKey || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    items.push({ url: key, text: text || '', score: score || 0, source: source || 'link' });
+  }
+
+  if (site.scanUrl) {
+    add(site.scanUrl, 'Configured dashboard/key page URL', 999, 'configured');
+  }
+
+  for (const link of Array.isArray(discoveredLinks) ? discoveredLinks : []) {
+    add(link.url, link.text, link.score, link.source);
+  }
+
+  return items.sort((a, b) => b.score - a.score);
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runPageScan(tabId, site) {
   const [execution] = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
+    target: { tabId },
     func: pageScan,
     args: [toScanPayload(site)]
   });
@@ -173,6 +264,49 @@ async function scanFromLoggedInTab(site) {
     throw new Error(result.error);
   }
   return result;
+}
+
+async function discoverCandidateLinks(tabId, site) {
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: pageDiscoverLinks,
+    args: [toScanPayload(site)]
+  });
+  const result = execution && execution.result;
+  if (!Array.isArray(result)) {
+    return [];
+  }
+  return result;
+}
+
+function waitForTabComplete(tabId, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(done, timeoutMs);
+
+    function done() {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve();
+    }
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        done();
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+    chrome.tabs.get(tabId).then((tab) => {
+      if (tab.status === 'complete') {
+        done();
+      }
+    }).catch(done);
+  });
 }
 
 async function findLoggedInTab(site) {
@@ -201,7 +335,7 @@ async function findLoggedInTab(site) {
     }
   });
 
-  if (originMatch && !site.scanUrl) {
+  if (originMatch && (!site.scanUrl || site.autoDiscoverKeyPage !== false)) {
     return originMatch;
   }
 
@@ -447,6 +581,180 @@ function pageScan(site) {
   }
 }
 
+function pageDiscoverLinks(site) {
+  const keywords = [
+    'key',
+    'keys',
+    'token',
+    'tokens',
+    'api',
+    'apikey',
+    'api-key',
+    'credential',
+    'credentials',
+    'group',
+    'groups',
+    'rate',
+    'ratio',
+    'multiplier',
+    '令牌',
+    '密钥',
+    '秘钥',
+    '接口',
+    '分组',
+    '倍率',
+    '费率',
+    '渠道',
+    '模型',
+    '生成'
+  ];
+  const negative = ['logout', 'signout', 'delete', 'remove', 'revoke', 'billing', 'invoice', '支付', '退出', '删除', '注销'];
+  const origin = window.location.origin;
+  const items = [];
+  const seen = new Set();
+  const fallbackPaths = [
+    '#/key',
+    '#/keys',
+    '#/token',
+    '#/tokens',
+    '#/apikey',
+    '#/api-key',
+    '#/api-keys',
+    '/key',
+    '/keys',
+    '/token',
+    '/tokens',
+    '/#/key',
+    '/#/keys',
+    '/#/token',
+    '/#/tokens',
+    '/apikey',
+    '/api-key',
+    '/api-keys',
+    '/#/apikey',
+    '/#/api-key',
+    '/#/api-keys',
+    '/user/key',
+    '/user/keys',
+    '/user/token',
+    '/user/tokens',
+    '/user/apikey',
+    '/user/api-key',
+    '/user/api-keys',
+    '/#/user/key',
+    '/#/user/keys',
+    '/#/user/token',
+    '/#/user/tokens',
+    '/#/user/apikey',
+    '/#/user/api-key',
+    '/#/user/api-keys',
+    '/dashboard/key',
+    '/dashboard/keys',
+    '/dashboard/token',
+    '/dashboard/tokens',
+    '/#/dashboard/key',
+    '/#/dashboard/keys',
+    '/#/dashboard/token',
+    '/#/dashboard/tokens',
+    '/console/key',
+    '/console/keys',
+    '/console/token',
+    '/console/tokens',
+    '/#/console/key',
+    '/#/console/keys',
+    '/#/console/token',
+    '/#/console/tokens',
+    '/panel/key',
+    '/panel/keys',
+    '/panel/token',
+    '/panel/tokens',
+    '/#/panel/key',
+    '/#/panel/keys',
+    '/#/panel/token',
+    '/#/panel/tokens',
+    '/setting/key',
+    '/settings/key',
+    '/settings/keys',
+    '/setting/token',
+    '/settings/token',
+    '/settings/tokens',
+    '/#/setting/key',
+    '/#/settings/key',
+    '/#/settings/keys',
+    '/#/setting/token',
+    '/#/settings/token',
+    '/#/settings/tokens'
+  ];
+
+  function normalizeText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function scoreLink(url, text) {
+    const haystack = `${url.pathname} ${url.search} ${url.hash} ${text}`.toLowerCase();
+    if (negative.some((word) => haystack.includes(word.toLowerCase()))) {
+      return -100;
+    }
+    let score = 0;
+    for (const word of keywords) {
+      if (haystack.includes(word.toLowerCase())) {
+        score += word.length > 3 ? 6 : 3;
+      }
+    }
+    if (/\/(user|account|dashboard|console|panel|setting|settings)\b/i.test(url.pathname)) {
+      score += 3;
+    }
+    if (/\/(key|keys|token|tokens|api|group|groups|rate|channel|model)/i.test(url.pathname)) {
+      score += 10;
+    }
+    return score;
+  }
+
+  function addCandidate(rawUrl, text, scoreBoost, source) {
+    if (!rawUrl) {
+      return;
+    }
+    let url;
+    try {
+      url = new URL(rawUrl, window.location.href);
+    } catch {
+      return;
+    }
+    if (url.origin !== origin || !['http:', 'https:'].includes(url.protocol)) {
+      return;
+    }
+    const key = url.toString();
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    const score = scoreLink(url, normalizeText(text)) + (scoreBoost || 0);
+    if (score > 0) {
+      items.push({ url: key, text: normalizeText(text), score, source });
+    }
+  }
+
+  for (const anchor of document.querySelectorAll('a[href], [to], [data-href], [data-url], [data-path]')) {
+    const rawUrl = anchor.getAttribute('href')
+      || anchor.getAttribute('to')
+      || anchor.getAttribute('data-href')
+      || anchor.getAttribute('data-url')
+      || anchor.getAttribute('data-path');
+    addCandidate(
+      rawUrl,
+      anchor.innerText || anchor.textContent || anchor.getAttribute('aria-label') || anchor.title,
+      8,
+      'link'
+    );
+  }
+
+  for (const path of fallbackPaths) {
+    addCandidate(path, path, -2, 'guess');
+  }
+
+  return items.sort((a, b) => b.score - a.score).slice(0, site.maxDiscoverPages || 8);
+}
+
 function validateSite(site) {
   if (!site) {
     throw new Error('Missing site config.');
@@ -488,7 +796,8 @@ function toPagePayload(site) {
 
 function toScanPayload(site) {
   return {
-    maxScanResults: Number(site.maxScanResults) || 50
+    maxScanResults: Number(site.maxScanResults) || 50,
+    maxDiscoverPages: Number(site.maxDiscoverPages) || 5
   };
 }
 

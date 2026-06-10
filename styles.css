@@ -140,6 +140,27 @@ p {
   margin-top: 10px;
 }
 
+.scan-meta {
+  border-top: 1px solid #edf0e8;
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.scan-meta ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.scan-meta li {
+  overflow-wrap: anywhere;
+}
+
 .footer {
   border-top: 1px solid var(--line);
   padding: 12px 14px;
@@ -239,6 +260,15 @@ textarea {
 
 .toggle input {
   width: auto;
+}
+
+.field-toggle {
+  align-self: end;
+  background: #fbfcf8;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  min-height: 39px;
+  padding: 9px 10px;
 }
 
 .help-panel {

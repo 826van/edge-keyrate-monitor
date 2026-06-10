@@ -68,6 +68,7 @@ function renderResult(result, groups) {
     return `
       <div class="error">${escapeHtml(result.error || 'Check failed')}</div>
       <p class="muted">HTTP ${escapeHtml(result.status || '-')} - ${escapeHtml(result.latencyMs || 0)}ms</p>
+      ${renderScanMeta(result)}
       ${result.preview ? `<details><summary>Response preview</summary><pre>${escapeHtml(result.preview)}</pre></details>` : ''}
     `;
   }
@@ -82,7 +83,32 @@ function renderResult(result, groups) {
       `).join('')}
     </div>
     <p class="muted">HTTP ${escapeHtml(result.status)} - ${escapeHtml(result.latencyMs)}ms</p>
+    ${renderScanMeta(result)}
   `;
+}
+
+function renderScanMeta(result) {
+  const rows = [];
+  if (result.discoveredUrl) {
+    rows.push(`<div>Scanned: <span title="${escapeAttr(result.discoveredUrl)}">${escapeHtml(shortUrl(result.discoveredUrl))}</span></div>`);
+  }
+  if (Array.isArray(result.triedUrls) && result.triedUrls.length) {
+    rows.push(`
+      <details>
+        <summary>Tried ${result.triedUrls.length} discovered page(s)</summary>
+        <ul>${result.triedUrls.map((url) => `<li title="${escapeAttr(url)}">${escapeHtml(shortUrl(url))}</li>`).join('')}</ul>
+      </details>
+    `);
+  }
+  if (Array.isArray(result.discoverErrors) && result.discoverErrors.length) {
+    rows.push(`
+      <details>
+        <summary>Discovery errors</summary>
+        <ul>${result.discoverErrors.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+      </details>
+    `);
+  }
+  return rows.length ? `<div class="scan-meta">${rows.join('')}</div>` : '';
 }
 
 function shortUrl(url) {
@@ -105,6 +131,10 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;'
   }[char]));
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, '&quot;');
 }
 
 render();

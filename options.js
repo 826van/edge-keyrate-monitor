@@ -70,6 +70,11 @@ function render() {
         </label>
       </div>
 
+      <div class="grid-2">
+        <label class="toggle field-toggle"><input type="checkbox" data-field="autoDiscoverKeyPage" ${site.autoDiscoverKeyPage !== false ? 'checked' : ''}>Auto discover key page</label>
+        <label>Max discover pages<input data-field="maxDiscoverPages" value="${escapeAttr(site.maxDiscoverPages || '5')}" placeholder="5"></label>
+      </div>
+
       <label>POST body<textarea data-field="body" rows="3" placeholder='{"page":1}'>${escapeHtml(site.body)}</textarea></label>
 
       <div class="grid-3">
@@ -131,6 +136,9 @@ async function saveSites() {
     requestMode: site.requestMode || 'scan',
     method: site.method || 'GET',
     parserType: site.parserType || 'json',
+    autoDiscoverKeyPage: site.autoDiscoverKeyPage !== false,
+    maxDiscoverPages: site.maxDiscoverPages || '5',
+    maxScanResults: site.maxScanResults || '50',
     tokenSource: site.tokenSource || 'none',
     authHeaderName: site.authHeaderName || 'Authorization',
     authHeaderTemplate: site.authHeaderTemplate || 'Bearer {{token}}'
@@ -160,6 +168,8 @@ function createSite() {
     tokenJsonPath: '',
     authHeaderName: 'Authorization',
     authHeaderTemplate: 'Bearer {{token}}',
+    autoDiscoverKeyPage: true,
+    maxDiscoverPages: '5',
     maxScanResults: '50'
   };
 }
