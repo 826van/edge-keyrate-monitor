@@ -1,34 +1,54 @@
 # Key Rate Monitor
 
-一个 Edge/Chrome 通用的 Manifest V3 插件，用来检测多个中转站账号里的密钥分组倍率。
+Edge/Chrome Manifest V3 extension for checking relay key group rates.
 
-## 设计方式
+## What it does
 
-- 插件不保存你的网页登录密码。
-- 检测请求使用 `credentials: include`，也就是复用浏览器当前已经登录的 cookie。
-- 配置和检测结果只保存在本机浏览器的 `chrome.storage.local`。
-- 插件会遮罩密钥提示，不展示完整 key。
+- Checks multiple relay dashboards.
+- Reuses your existing browser login.
+- Supports two request modes:
+  - `Logged-in tab`: runs fetch inside an already logged-in site tab. This is best for dashboards that require page cookies, localStorage tokens, or same-origin requests.
+  - `Extension background`: runs fetch from the extension service worker.
+- Keeps config and results in local browser storage.
+- Masks key-like values in response previews.
 
-## 安装
+## Install in Edge
 
-1. 打开 Edge：`edge://extensions/`
-2. 打开左侧或页面上的 `开发人员模式`
-3. 点 `加载解压缩的扩展`
-4. 选择本目录：`edge-keyrate-monitor`
+1. Open `edge://extensions/`.
+2. Enable `Developer mode`.
+3. Click `Load unpacked`.
+4. Select `E:\edge-keyrate-monitor`.
 
-## 使用
+After edits, click `Reload` on the extension card.
 
-1. 先在 Edge 里登录对应中转站后台。
-2. 打开插件，点 `设置站点`。
-3. 添加站点，填入能返回倍率分组的后台页面或 API 地址。
-4. 选择解析方式：
-   - `JSON`：适合后台接口返回 JSON。
-   - `网页/文本正则`：适合只能抓后台 HTML 页面。
-5. 保存后点 `保存并立即检测`。
+## Configure vip.lcodex.cn
 
-## JSON 解析示例
+1. Open `https://vip.lcodex.cn` in Edge and log in.
+2. Keep that tab open.
+3. Open the extension options.
+4. Add a site with:
+   - Name: `vip.lcodex`
+   - Login origin: `https://vip.lcodex.cn`
+   - Check URL: `https://vip.lcodex.cn/api/user/self/groups`
+   - Request mode: `Logged-in tab`
+   - Method: `GET`
+   - Parser: `JSON`
+   - JSON list path: leave blank first, so the extension tries auto-detection.
+5. Save and check.
 
-如果接口返回：
+If the API still fails, open DevTools -> Network on the dashboard, click the same request, and inspect request headers:
+
+- If it uses `Authorization: Bearer xxx`, find where the token is stored in Application -> Local Storage or Session Storage.
+- In the extension options, set:
+  - Token source: `localStorage` or `sessionStorage`
+  - Token key: the storage key
+  - Token JSON path: only needed if the storage value is JSON
+  - Auth header: `Authorization`
+  - Auth template: `Bearer {{token}}`
+
+## JSON parsing
+
+If the API returns:
 
 ```json
 {
@@ -41,29 +61,10 @@
 }
 ```
 
-那么配置：
+Use:
 
-- JSON 列表路径：`data.groups`
-- 分组字段：`name`
-- 倍率字段：`rate`
+- JSON list path: `data.groups`
+- Group field: `name`
+- Rate field: `rate`
 
-## 正则解析示例
-
-如果页面里有：
-
-```text
-default 倍率: 1x
-vip 倍率: 0.5x
-```
-
-可以使用：
-
-```text
-([^\n\r]+?)\s*(?:倍率|rate|ratio|multiplier)\s*[:：=]\s*([0-9.]+)\s*x?
-```
-
-第 1 个捕获组是分组名，第 2 个捕获组是倍率。
-
-## 注意
-
-不同中转站的后台接口不一样。最稳的方式是在打开后台页面后按 `F12`，进入 `Network`，刷新页面，找到返回密钥分组或倍率的接口 URL，再填到插件设置里。
+If the list path is empty, the extension tries common paths such as `data.groups`, `data`, `groups`, and `list`.

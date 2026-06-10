@@ -5,7 +5,7 @@ const openOptions = document.querySelector('#openOptions');
 
 refresh.addEventListener('click', async () => {
   refresh.disabled = true;
-  summary.textContent = '正在检测...';
+  summary.textContent = 'Checking...';
   await chrome.runtime.sendMessage({ type: 'RUN_CHECKS' });
   await render();
   refresh.disabled = false;
@@ -23,18 +23,18 @@ async function render() {
   });
 
   if (!sites.length) {
-    summary.textContent = '还没有站点';
+    summary.textContent = 'No sites yet';
     content.innerHTML = `
       <section class="empty">
-        <strong>先添加一个中转站</strong>
-        <span>在设置页填后台接口或页面地址，再配置倍率解析规则。</span>
+        <strong>Add a relay site first</strong>
+        <span>Open settings, add the API URL, then choose a parser.</span>
       </section>
     `;
     return;
   }
 
   const okCount = sites.filter((site) => results[site.id]?.ok).length;
-  summary.textContent = `${okCount}/${sites.length} 正常${lastRunAt ? ` · ${formatTime(lastRunAt)}` : ''}`;
+  summary.textContent = `${okCount}/${sites.length} OK${lastRunAt ? ` · ${formatTime(lastRunAt)}` : ''}`;
 
   content.innerHTML = sites.map((site) => {
     const result = results[site.id];
@@ -44,12 +44,12 @@ async function render() {
       <article class="site-card ${status}">
         <div class="site-head">
           <div>
-            <h2>${escapeHtml(site.name || site.origin || '未命名站点')}</h2>
-            <span>${escapeHtml(site.origin || shortUrl(site.checkUrl))}</span>
+            <h2>${escapeHtml(site.name || site.origin || 'Unnamed site')}</h2>
+            <span>${escapeHtml(result?.transport || site.requestMode || 'page')} · ${escapeHtml(site.origin || shortUrl(site.checkUrl))}</span>
           </div>
-          <button class="small-button" data-site-id="${site.id}">检测</button>
+          <button class="small-button" data-site-id="${site.id}">Check</button>
         </div>
-        ${result ? renderResult(result, groups) : '<p class="muted">还未检测</p>'}
+        ${result ? renderResult(result, groups) : '<p class="muted">Not checked yet</p>'}
       </article>
     `;
   }).join('');
@@ -66,8 +66,9 @@ async function render() {
 function renderResult(result, groups) {
   if (!result.ok) {
     return `
-      <div class="error">${escapeHtml(result.error || '检测失败')}</div>
+      <div class="error">${escapeHtml(result.error || 'Check failed')}</div>
       <p class="muted">HTTP ${escapeHtml(result.status || '-')} · ${escapeHtml(result.latencyMs || 0)}ms</p>
+      ${result.preview ? `<details><summary>Response preview</summary><pre>${escapeHtml(result.preview)}</pre></details>` : ''}
     `;
   }
 

@@ -1,33 +1,33 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Key Rate Monitor 设置</title>
+    <title>Key Rate Monitor Options</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body class="options">
     <main class="settings-shell">
       <header class="settings-header">
         <div>
-          <h1>中转站倍率监控</h1>
-          <p>使用浏览器里已经登录的账号检测倍率分组；配置和检测结果只保存在本机浏览器。</p>
+          <h1>Relay key rate monitor</h1>
+          <p>Checks relay dashboards with your existing browser login. Config and results stay in this browser.</p>
         </div>
-        <button id="addSite" class="primary-button">添加站点</button>
+        <button id="addSite" class="primary-button">Add site</button>
       </header>
 
       <section id="siteEditor" class="editor-list"></section>
 
       <section class="help-panel">
-        <h2>怎么填</h2>
-        <p>优先用浏览器开发者工具 Network 里能返回倍率/分组的接口地址。插件请求会带上当前网页登录 cookie。</p>
-        <p>JSON 解析：列表路径例如 <code>data.groups</code>，分组字段例如 <code>name</code>，倍率字段例如 <code>rate</code>。</p>
-        <p>网页/文本解析：默认匹配“分组名 倍率: 1.5x”，也可以填自定义正则。第 1 组是分组名，第 2 组是倍率，第 3 组可选为密钥提示。</p>
+        <h2>How to configure vip.lcodex.cn</h2>
+        <p>Keep a normal logged-in tab open at <code>https://vip.lcodex.cn</code>.</p>
+        <p>Use check URL <code>https://vip.lcodex.cn/api/user/self/groups</code> and request mode <code>Logged-in tab</code>.</p>
+        <p>If it still fails, open DevTools Network, click the same API request, and copy its Authorization header source. Then set Token source/key below.</p>
       </section>
 
       <footer class="settings-actions">
-        <button id="save" class="primary-button">保存配置</button>
-        <button id="run" class="secondary-button">保存并立即检测</button>
+        <button id="save" class="primary-button">Save</button>
+        <button id="run" class="secondary-button">Save and check now</button>
         <span id="status" class="status-text"></span>
       </footer>
     </main>
